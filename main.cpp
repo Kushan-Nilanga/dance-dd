@@ -106,10 +106,11 @@ int main()
 
         dd->print();
 
-        cout << "\ncovering \n";
-        dd->cover(dd->placeholder->right->right->right);
-        cout << "\ndone covering\n";
+        cout << "\n------------------------------------------------------\n";
+        dd->cover(dd->placeholder->right->right->right->right);
+
         dd->print();
+        cout << "\n";
     }
     return 0;
 }

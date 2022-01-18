@@ -77,9 +77,9 @@ private:
         Node *curr = new Node(item);
         curr->hi = curr_hi;
         curr->lo = curr_lo;
-        curr->hi->add_parent(new Parent(curr, HI));
+        curr->hi->add_parent(curr, HI);
         if (curr_lo != nullptr)
-            curr->lo->add_parent(new Parent(curr, LO));
+            curr->lo->add_parent(curr, LO);
 
         // Rule 2 - merge
         Cell *p = item->down;
@@ -92,7 +92,10 @@ private:
                 curr->down->up = curr->up;
                 curr->item->len--;
                 auto match = (Node *)p;
-                match->extend_parents(curr->head, curr->tail);
+                match->hlen *= 2;
+                match->llen *= 2;
+                match->plen = match->llen + match->hlen;
+                match->extend_parents(curr->head, curr->tail, curr->parent_len);
                 delete curr;
                 return match;
             }
@@ -138,16 +141,13 @@ public:
             return;
 
         if (node->hi != nullptr && node->hi != t1)
-        {
             descendants->push_back(make_tuple(node->hi, HI));
-            get_descendants(descendants, node->hi);
-        }
 
         if (node->lo != nullptr && node->lo != t1)
-        {
             descendants->push_back(make_tuple(node->lo, LO));
-            get_descendants(descendants, node->lo);
-        }
+
+        get_descendants(descendants, node->lo);
+        get_descendants(descendants, node->hi);
     }
 
     void get_ancestors(vector<tuple<Node *, PATH>> *vec, Node *node)
@@ -162,10 +162,15 @@ public:
         while (i != node->tail)
         {
             if (i->node != nullptr && i->node != t1)
-            {
                 vec->push_back(make_tuple(i->node, i->path));
+            i = i->right;
+        }
+
+        i = node->head->right;
+        while (i != node->tail)
+        {
+            if (i->node != nullptr && i->node != t1)
                 get_ancestors(vec, i->node);
-            }
             i = i->right;
         }
     }
@@ -181,6 +186,8 @@ public:
         {
             int l = p->hlen;
 
+
+            // Update hlen(p) and llen(p) assuming all high edges of q ∈ C were removed
             if (t == HI)
                 p->hlen--;
             else
@@ -201,34 +208,18 @@ public:
             Parent *s = p->head->right;
             while (s != p->tail)
             {
-                p->lo->add_parent(s);
-                if (s->path == LO)
-                    s->node->lo = p->lo;
-                else
-                    s->node->hi = p->lo;
-            }
-
-            // Remove (p, HI) from Parents(hi(p))
-            Parent *a = p->hi->head->right;
-            while (a != p->hi->tail)
-            {
-                if (a->node == p && a->path == HI)
+                if (p->lo != nullptr && p->hi != t1)
                 {
-                    a->left->right = a->left;
-                    a->right->left = a->right;
+                    p->lo->add_parent(s->node, s->path);
+                    if (s->path == LO)
+                        s->node->lo = p->lo;
+                    else
+                        s->node->hi = p->lo;
                 }
             }
 
-            // Remove (p, LO) from Parents(lo(p))
-            Parent *b = p->lo->head->right;
-            while (b != p->lo->tail)
-            {
-                if (b->node == p && b->path == LO)
-                {
-                    b->left->right = b->left;
-                    b->right->left = b->right;
-                }
-            }
+            p->hi->remove_parent(p, HI);
+            p->lo->remove_parent(p, LO);
         }
     }
 
@@ -241,8 +232,10 @@ public:
         for (auto [p, t] : V)
         {
             int l = p->plen;
-            // Update plen(p) assuming all high edges of q ∈ R were deleted.
+
+            // Update plen(p) assuming all high edges of a € R were deleted.
             p->plen--;
+
             Item *i = p->item;
             i->len = i->len - (l - p->plen) * p->hlen;
             if (p->plen == 0)
@@ -250,12 +243,10 @@ public:
                 p->up->down = p->down;
                 p->down->up = p->up;
 
-                if (p->hi != nullptr)
-                    // Remove (p, HI) from Parents(hi(p))
+                if (p->hi != nullptr && p->hi != t1)
                     p->hi->remove_parent(p, HI);
 
-                if (p->lo != nullptr)
-                    // Remove (p, LO) from Parents(lo(p))
+                if (p->lo != nullptr && p->hi != t1)
                     p->lo->remove_parent(p, LO);
             }
         }
@@ -282,16 +273,23 @@ public:
             Parent *a = p->head->right;
             while (a != p->tail)
             {
-                p->lo->add_parent(a);
-                if (a->path == LO)
-                    a->node->lo = p->lo;
-                else
-                    a->node->hi = p->hi;
+                if (p->lo != nullptr && p->hi != t1)
+                {
+                    p->lo->add_parent(a->node, a->path);
+
+                    if (a->path == LO)
+                        a->node->lo = p->lo;
+                    else
+                        a->node->hi = p->lo;
+                }
                 a = a->right;
             }
 
-            p->hi->remove_parent(p, HI);
-            p->lo->remove_parent(p, LO);
+            if (p->hi != nullptr && p->hi != t1)
+                p->hi->remove_parent(p, HI);
+
+            if (p->lo != nullptr && p->hi != t1)
+                p->lo->remove_parent(p, LO);
         }
     }
 
@@ -320,8 +318,8 @@ public:
 
         for (auto p : C)
         {
-            p->hi->add_parent(new Parent(p, HI));
-            p->lo->add_parent(new Parent(p, LO));
+            p->hi->add_parent(p, HI);
+            p->lo->add_parent(p, LO);
 
             Parent *a = p->head->left;
             while (a != p->tail)
@@ -336,6 +334,12 @@ public:
 
         uncover_lower(C);
         uncover_upper(C);
+    }
+
+    vector<Node *> search(vector<Node *> A, vector<Node *> R)
+    {
+        if (A.size() == 0)
+            return R;
     }
 
     int size()
@@ -358,29 +362,15 @@ public:
             Node *n = (Node *)p->down;
             while (n != (Node *)p)
             {
-                cout << n->item->val << " " << n << endl;
-                cout << "parents ";
-                Parent *q = n->head->right;
-
-                while (q != n->tail)
-                {
-                    string path = (q->path == HI) ? "HI" : "LO";
-                    cout << "[" << q->node << " " << path << "] ";
-                    q = q->right;
-                }
-                cout << endl;
-
-                cout << "HI " << n->hi << endl;
-                cout << "LO " << n->lo << endl;
-
-                cout << endl;
+                n->print();
                 n = (Node *)n->down;
+                cout << endl;
             }
-            cout << endl;
 
             p = p->right;
         }
         cout << "T1 " << t1 << endl;
+        t1->print();
     }
 };
 
