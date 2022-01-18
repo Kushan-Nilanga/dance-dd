@@ -28,6 +28,7 @@ public:
     Node()
     {
         init_parent_list();
+        __visited = false;
     }
 
     Node(Item *item)
@@ -103,6 +104,7 @@ public:
     Item *item;
     Node *lo, *hi;
     int plen = 0, llen = 0, hlen = 0, parent_len = 0;
+    bool __visited;
     Parent *head, *tail;
 };
 

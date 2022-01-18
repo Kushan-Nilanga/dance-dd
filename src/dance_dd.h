@@ -9,6 +9,7 @@
 #include <list>
 #include <sstream>
 #include <chrono>
+#include <stack>
 
 #include "node.h"
 #include "path.h"
@@ -135,19 +136,25 @@ public:
         root = _build(placeholder->right, &sets);
     }
 
-    void get_descendants(vector<tuple<Node *, PATH>> *descendants, Node *node)
+    void get_descendants(deque<tuple<Node *, PATH>> *descendants, Node *node)
     {
         if (node == nullptr || node == t1)
             return;
 
-        if (node->hi != nullptr && node->hi != t1)
-            descendants->push_back(make_tuple(node->hi, HI));
-
-        if (node->lo != nullptr && node->lo != t1)
-            descendants->push_back(make_tuple(node->lo, LO));
-
         get_descendants(descendants, node->lo);
         get_descendants(descendants, node->hi);
+
+        if (node->hi != nullptr && node->hi != t1)
+        {
+            node->hi->__visited = true;
+            descendants->push_front(make_tuple(node->hi, HI));
+        }
+
+        if (node->lo != nullptr && node->lo != t1 && node->lo->__visited != true)
+        {
+            node->lo->__visited = true;
+            descendants->push_front(make_tuple(node->lo, LO));
+        }
     }
 
     void get_ancestors(vector<tuple<Node *, PATH>> *vec, Node *node)
@@ -185,7 +192,6 @@ public:
         for (auto [p, t] : V)
         {
             int l = p->hlen;
-
 
             // Update hlen(p) and llen(p) assuming all high edges of q ∈ C were removed
             if (t == HI)
@@ -225,16 +231,23 @@ public:
 
     void cover_lower(vector<Node *> C)
     {
-        vector<tuple<Node *, PATH>> V;
+        deque<tuple<Node *, PATH>> V;
         for (auto i : C)
-            get_descendants(&V, i);
+        {
+            V.push_front(make_tuple(i->hi, HI));
+            get_descendants(&V, i->hi);
+        }
+
+        for (auto [p, t] : V)
+            cout << p << ", item:" << p->item->val << " plen:" << p->plen << ", path:" << t << endl;
 
         for (auto [p, t] : V)
         {
+            p->__visited = false;
             int l = p->plen;
 
-            // Update plen(p) assuming all high edges of a € R were deleted.
-            p->plen--;
+            // Update plen(p) assuming all high edges of a € C were deleted.
+            p->plen--; // The problem is here
 
             Item *i = p->item;
             i->len = i->len - (l - p->plen) * p->hlen;

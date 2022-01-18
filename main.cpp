@@ -107,7 +107,7 @@ int main()
         dd->print();
 
         cout << "\n------------------------------------------------------\n";
-        dd->cover(dd->placeholder->right->right->right->right);
+        dd->cover(dd->placeholder->right);
 
         dd->print();
         cout << "\n";
