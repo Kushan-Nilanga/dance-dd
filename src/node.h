@@ -28,7 +28,6 @@ public:
     Node()
     {
         init_parent_list();
-        __visited = false;
     }
 
     Node(Item *item)
@@ -80,12 +79,18 @@ public:
     void print()
     {
         if (item != nullptr)
+        {
             cout << item->val << " " << this << endl;
+        }
+        
         cout << "hlen: " << hlen << ", llen: " << llen << ", plen: " << plen << endl;
 
+//        parents
         Parent *q = head->right;
         if (head->right != tail)
+        {
             cout << "parents(" << parent_len << ")";
+        }
 
         while (q != tail)
         {
@@ -104,7 +109,7 @@ public:
     Item *item;
     Node *lo, *hi;
     int plen = 0, llen = 0, hlen = 0, parent_len = 0;
-    bool __visited;
+    bool __merged = false;
     Parent *head, *tail;
 };
 

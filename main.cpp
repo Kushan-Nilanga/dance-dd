@@ -72,15 +72,18 @@ deque<int> text_to_array(string text)
 //     "./data/partition/exact_cover/grafo270.20.ec",
 //     "./data/partition/exact_cover/grafo171.30.ec"};
 
-vector<string> data_file{"./data/cycle/exact_cover/simple.ec"};
+vector<string> data_file{"/data/cycle/exact_cover/simple.ec"};
+string location = "/Users/donkushanathalage/Desktop/d3x/d3x";
 
 // Main function
 int main()
 {
     // Iterate through datafiles
-    for (auto &&file_path : data_file)
+    for (auto file_path : data_file)
     {
-        ifstream file(file_path);
+        
+        
+        ifstream file(location + file_path);
         string text;
 
         // all sets in the
