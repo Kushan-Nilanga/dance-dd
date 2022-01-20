@@ -112,7 +112,7 @@ private:
                 auto match = (Node *)p;
                 match->extend_parents(curr->head, curr->tail, curr->parent_len);
                 curr = match;
-                curr->__merged = true;
+                merged.push_back(curr);
                 break;
             }
             p = p->down;
@@ -124,6 +124,7 @@ private:
 public:
     Item *placeholder;
     Node *t1, *root;
+    vector<Node*> merged;
 
     DanceDD(deque<int> items)
     {
@@ -144,7 +145,13 @@ public:
 
     void build(deque<deque<int>> sets)
     {
+        // building the zdd
         root = _build(placeholder->right, &sets);
+        
+        // updating hlen llen and plen of merged nodes
+        for(auto a: merged){
+            update_merged_node(a);
+        }
     }
 
     void get_descendants(deque<tuple<Node *, int>> *descendants, Node *node, int paths)
@@ -261,14 +268,14 @@ public:
             int l = p->plen;
 
             // Update plen(p) assuming all high edges of a € C were deleted.
-            p->plen-=t; // The problem is here
-            // p->plen = 0;
-            printf("item: %d, i-len: %d, init_plen: %d, now_plen: %d, h_len:%d,", p->item->val, p->item->len, l, p->plen, p->hlen);
+            p->plen-=t;
+            
+//            printf("item: %d, i->len: %d, l: %d, plen: %d, h_len:%d,", p->item->val, p->item->len, l, p->plen, p->hlen);
 
             Item *i = p->item;
             i->len = i->len - (l - p->plen) * p->hlen;
             
-            printf(" new_ilen: %d\n", i->len);
+//            printf(" new_ilen: %d\n", i->len);
             
             if (p->plen == 0)
             {
