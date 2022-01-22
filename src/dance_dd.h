@@ -43,18 +43,6 @@ private:
 
         return _isosubgraph(curr_node->hi, subject_node->hi) && _isosubgraph(curr_node->lo, subject_node->lo);
     }
-    
-    void update_merged_node(Node*node){
-        if(node==nullptr||node==t1)
-            return;
-            
-        node->llen *= 2;
-        node->hlen *= 2;
-        node->plen *= 2;
-        
-        update_merged_node(node->hi);
-        update_merged_node(node->lo);
-    }
 
     Node *_build(Item *item, deque<deque<int>> *rows)
     {
@@ -76,28 +64,41 @@ private:
                 hi_list.push_back(row);
             }
             else
-            {
                 lo_list.push_back(row);
-            }
         }
 
         Node *curr_hi = _build(item->right, &hi_list);
         Node *curr_lo = _build(item->right, &lo_list);
+        
 
         // Rule 1 - reduction
         if (curr_hi == nullptr)
             return curr_lo;
 
         Node *curr = new Node(item);
+        curr->item->len++;
         curr->hi = curr_hi;
         curr->lo = curr_lo;
         curr->hi->add_parent(curr, HI);
-        if (curr_lo != nullptr)
+        if (curr->lo != nullptr)
             curr->lo->add_parent(curr, LO);
         
-        curr->llen = curr->lo != nullptr ? curr->lo->plen : 0;
-        curr->hlen = curr->hi != nullptr ? curr->hi->plen : 0;
-        curr->plen = curr->llen + curr->hlen;
+        curr->llen = curr->lo != nullptr ? curr->lo->llen + curr->lo->hlen: 0;
+        curr->hlen = curr->hi != nullptr ? curr->hi->llen + curr->hi->hlen : 0;
+        
+        curr->hlen = 0;
+        if(curr->hi != nullptr)
+        {
+            curr->hi->plen++;
+            curr->hlen =curr->hi->llen + curr->hi->hlen;
+        }
+        
+        curr->llen = 0;
+        if(curr->lo != nullptr)
+        {
+            curr->lo->plen++;
+            curr->llen = curr->lo->llen + curr->lo->hlen;
+        }
 
         // Rule 2 - merge
         Cell *p = item->down;
@@ -110,8 +111,10 @@ private:
                 curr->down->up = curr->up;
                 curr->item->len--;
                 auto match = (Node *)p;
+                match->plen += curr->plen;
                 match->extend_parents(curr->head, curr->tail, curr->parent_len);
                 curr = match;
+                                
                 merged.push_back(curr);
                 break;
             }
@@ -140,42 +143,13 @@ public:
 
         // terminal-1 node
         t1 = new Node();
-        t1->plen = 1;
+        t1->hlen = 1;
     }
 
     void build(deque<deque<int>> sets)
     {
         // building the zdd
         root = _build(placeholder->right, &sets);
-        
-        // updating hlen llen and plen of merged nodes
-        for(auto a: merged){
-            update_merged_node(a);
-        }
-    }
-
-    void get_descendants(deque<tuple<Node *, int>> *descendants, Node *node, int paths)
-    {
-        if (node == nullptr || node == t1)
-            return;
-
-        if(node->hi == t1)
-            paths--;
-        if(node->lo == t1)
-            paths--;
-        
-        get_descendants(descendants, node->lo, paths);
-        get_descendants(descendants, node->hi, paths);
-
-        if (node->hi != nullptr && node->hi != t1)
-        {
-            descendants->push_front(make_tuple(node->hi, paths));
-        }
-
-        if (node->lo != nullptr && node->lo != t1)
-        {
-            descendants->push_front(make_tuple(node->lo, paths));
-        }
     }
 
     void get_ancestors(vector<tuple<Node *, PATH, int>> *vec, Node *node)
@@ -216,12 +190,15 @@ public:
 
             // Update hlen(p) and llen(p) assuming all high edges of q ∈ C were removed
             if (t == HI)
-                p->hlen -= n;
+                p->hlen -= 1;
             else
-                p->llen -= n;
+                p->llen -= 1;
 
             Item *i = p->item;
-            i->len = i->len - p->plen * (l - p->hlen);
+            int i_len = i->len - p->plen * (l - p->hlen);
+            
+            printf("(%d)i->len = %d - %d * (%d - %d) = %d\n", i->val, i->len, p->plen, l, p->hlen, i_len);
+            i->len = i_len;
 
             if (l > 0 && p->hlen == 0)
                 H.push_back(p);
@@ -253,29 +230,44 @@ public:
                 p->lo->remove_parent(p, LO);
         }
     }
+    
+    void get_descendants(deque<Node *> *descendants, Node *node)
+    {
+        if (node == nullptr || node == t1)
+            return;
+        
+        get_descendants(descendants, node->lo);
+        get_descendants(descendants, node->hi);
+
+        if (node->hi != nullptr && node->hi != t1)
+            descendants->push_front(node->hi);
+
+        if (node->lo != nullptr && node->lo != t1)
+            descendants->push_front(node->lo);
+        
+    }
+
 
     void cover_lower(vector<Node *> C)
     {
-        deque<tuple<Node *, int>> V;
+        deque<Node *> V;
         for (auto i : C)
         {
-            V.push_front(make_tuple(i->hi, i->hlen));
-            get_descendants(&V, i->hi, i->hlen);
+            V.push_front(i->hi);
+            get_descendants(&V, i->hi);
         }
 
-        for (auto [p, t] : V)
+        for (auto p : V)
         {
             int l = p->plen;
 
             // Update plen(p) assuming all high edges of a € C were deleted.
-            p->plen-=t;
+            p->plen -= 1;
             
-//            printf("item: %d, i->len: %d, l: %d, plen: %d, h_len:%d,", p->item->val, p->item->len, l, p->plen, p->hlen);
-
             Item *i = p->item;
-            i->len = i->len - (l - p->plen) * p->hlen;
-            
-//            printf(" new_ilen: %d\n", i->len);
+            int i_len = i->len - (l - p->plen) * p->hlen;
+            printf("(%d) i->len = %d - (%d - %d) * %d = %d\n", i->val, i->len, l, p->plen, p->hlen, i_len);
+            i->len = i_len;
             
             if (p->plen == 0)
             {
@@ -374,6 +366,8 @@ public:
         uncover_lower(C);
         uncover_upper(C);
     }
+    
+    void search(vector<vector<int>> R){}
 
     int size()
     {

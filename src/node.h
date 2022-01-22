@@ -37,7 +37,6 @@ public:
         down = item;
         item->up->down = this;
         item->up = this;
-        item->len++;
         init_parent_list();
     }
 

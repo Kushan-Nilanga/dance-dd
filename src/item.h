@@ -39,6 +39,7 @@ public:
 
     Item *left, *right;
     int val, len = 0;
+    // len is number of paths through the item and not number of nodes
 };
 
 #endif
