@@ -76,7 +76,6 @@ private:
             return curr_lo;
 
         Node *curr = new Node(item);
-        curr->item->len++;
         curr->hi = curr_hi;
         curr->lo = curr_lo;
         curr->hi->add_parent(curr, HI);
@@ -91,6 +90,8 @@ private:
         {
             curr->hi->plen++;
             curr->hlen =curr->hi->llen + curr->hi->hlen;
+            if(curr->hi != t1)
+                curr->hi->item->len = curr->hi->plen * (curr->hi->hlen + curr->hi->llen);
         }
         
         curr->llen = 0;
@@ -98,6 +99,8 @@ private:
         {
             curr->lo->plen++;
             curr->llen = curr->lo->llen + curr->lo->hlen;
+            if(curr->lo != t1)
+                curr->lo->item->len = curr->lo->plen * (curr->lo->hlen + curr->lo->llen);
         }
 
         // Rule 2 - merge
@@ -109,7 +112,6 @@ private:
                 // remove newly created node
                 curr->up->down = curr->down;
                 curr->down->up = curr->up;
-                curr->item->len--;
                 auto match = (Node *)p;
                 match->plen += curr->plen;
                 match->extend_parents(curr->head, curr->tail, curr->parent_len);
@@ -150,6 +152,8 @@ public:
     {
         // building the zdd
         root = _build(placeholder->right, &sets);
+        root->plen = 1;
+        root->item->len = root->plen * (root->hlen + root->llen);
     }
 
     void get_ancestors(vector<tuple<Node *, PATH, int>> *vec, Node *node)

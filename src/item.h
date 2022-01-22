@@ -17,6 +17,7 @@ public:
         left = this;
         up = this;
         down = this;
+        len = 0;
     }
 
     Item(int val, Item *prev)
@@ -24,6 +25,7 @@ public:
         this->val = val;
         up = this;
         down = this;
+        len = 0;
 
         // setting links
         left = prev;
@@ -38,7 +40,7 @@ public:
     }
 
     Item *left, *right;
-    int val, len = 0;
+    int val, len;
     // len is number of paths through the item and not number of nodes
 };
 
