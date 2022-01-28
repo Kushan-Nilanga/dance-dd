@@ -40,6 +40,32 @@ public:
         init_parent_list();
     }
 
+    void get_descendants(deque<Node *> *destination, Node *t1)
+    {
+        if (hi != nullptr && hi != t1)
+        {
+            destination->push_back(hi);
+            hi->get_descendants(destination, t1);
+        }
+
+        if (lo != nullptr && lo != t1)
+        {
+            destination->push_back(lo);
+            lo->get_descendants(destination, t1);
+        }
+    }
+
+    void get_ancestors(deque<tuple<Node *, PATH, int>> *destination)
+    {
+        Parent *p = head->right;
+        while (p != tail)
+        {
+            destination->push_back(make_tuple(p->node, p->path, p->path == HI ? p->node->hlen : p->node->llen));
+            p->node->get_ancestors(destination);
+            p = p->right;
+        }
+    }
+
     void add_parent(Node *node, PATH path)
     {
         Parent *p = new Parent(node, path);
@@ -79,36 +105,35 @@ public:
     {
         if (item != nullptr)
         {
-            cout << item->val << " " << this << endl;
+            cout << item->val << " ";
         }
-        
-        cout << "hlen: " << hlen << ", llen: " << llen << ", plen: " << plen << endl;
 
-//        parents
+        string h = hi == nullptr ? "0" : hi->item == nullptr ? "T"
+                                                             : to_string(hi->item->val);
+
+        string l = lo == nullptr ? "0" : lo->item == nullptr ? "T"
+                                                             : to_string(lo->item->val);
+
+        cout << "[\033[32mhlen: " << hlen << ", \033[31mllen: " << llen << ", \033[33mplen: " << plen;
+        cout << "\033[0m][\033[30m\033[42mHI " << h;
+        cout << ",\033[41m LO " << l << "\033[0m]";
+
+        cout << "[";
+
         Parent *q = head->right;
-        if (head->right != tail)
-        {
-            cout << "parents(" << parent_len << ")";
-        }
-
         while (q != tail)
         {
             string path = (q->path == HI) ? "HI" : "LO";
-            cout << "[" << q->node << " " << path << "] ";
+            cout << "(" << q->node->item->val << " " << path << ")";
             q = q->right;
         }
 
-        if (head->right != tail)
-            cout << endl;
-
-        cout << "HI " << hi << endl;
-        cout << "LO " << lo << endl;
+        cout << "]" << endl;
     }
 
     Item *item;
     Node *lo, *hi;
     int plen = 0, llen = 0, hlen = 0, parent_len = 0;
-    bool __merged = false;
     Parent *head, *tail;
 };
 

@@ -8,6 +8,7 @@
 #include <tuple>
 #include <sstream>
 #include <chrono>
+#include <cassert>
 
 #include "src/dance_dd.h"
 
@@ -73,47 +74,70 @@ deque<int> text_to_array(string text)
 //     "./data/partition/exact_cover/grafo171.30.ec"};
 
 vector<string> data_file{"/data/cycle/exact_cover/simple.ec"};
-string location = "/Users/donkushanathalage/Desktop/d3x/d3x";
+string location = "/Users/donkushanathalage/Desktop/d3x-c++/d3x";
+
+void test(DanceDD *dd, deque<deque<int>> sets);
 
 // Main function
 int main()
 {
-    // Iterate through datafiles
-    for (auto file_path : data_file)
-    {
-        
-        
-        ifstream file(location + file_path);
-        string text;
+    ifstream file(location + "/data/cycle/exact_cover/simple.ec");
+    string text;
 
-        // all sets in the
-        deque<deque<int>> sets;
+    // all sets in the
+    deque<deque<int>> sets;
 
-        // reading datafile line by line
-        while (getline(file, text))
-        {
-            deque<int> set = text_to_array(text);
-            sets.push_back(set);
-        }
-        file.close();
+    // reading datafile line by line
+    while (getline(file, text))
+        sets.push_back(text_to_array(text));
 
-        // Building Dance DD
-        DanceDD *dd = new DanceDD(sets.front());
-        sets.pop_front();
+    file.close();
 
-        dd->build(sets);
-
-        cout
-            << setw(50) << left << file_path
-            << setw(10) << right << dd->size() << endl;
-
-        dd->print();
-
-        cout << "\n------------------------------------------------------\n";
-        dd->cover(dd->placeholder->right);
-
-        dd->print();
-        cout << "\n";
-    }
+    // Building Dance DD
+    DanceDD *dd = new DanceDD(sets);
+    Item *i = dd->placeholder->right->right->right->right;
+    cout << "Covering " << i->val << endl;
+    dd->cover(i);
+    dd->print();
     return 0;
+}
+
+void test(DanceDD *dd, deque<deque<int>> sets)
+{
+    // test 1 - item links - right
+    int _count = 1;
+    auto p = dd->placeholder->right;
+    while (p != dd->placeholder)
+    {
+        assert(p->val == _count);
+        _count++;
+        p = p->right;
+    }
+
+    // test 2 - item links - left
+    p = dd->placeholder->left;
+    _count = p->val;
+    while (p != dd->placeholder)
+    {
+        assert(p->val == _count);
+        _count--;
+        p = p->left;
+    }
+
+    // test 3 - len fields
+    auto items = sets.front();
+    sets.pop_front();
+    int lens[items.size()] = {};
+    for (auto set : sets)
+    {
+        for (auto item : set)
+            lens[item - 1]++;
+    }
+
+    p = dd->placeholder->right;
+    while (p != dd->placeholder)
+    {
+        assert(lens[p->val - 1] == p->len);
+        p = p->right;
+    }
 }

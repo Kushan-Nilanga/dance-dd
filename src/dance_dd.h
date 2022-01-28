@@ -57,7 +57,7 @@ private:
         {
             int val = item->val;
             deque<int> row = (*rows)[i];
-            
+
             if (row.size() > 0 && val == row.front())
             {
                 row.pop_front();
@@ -69,7 +69,6 @@ private:
 
         Node *curr_hi = _build(item->right, &hi_list);
         Node *curr_lo = _build(item->right, &lo_list);
-        
 
         // Rule 1 - reduction
         if (curr_hi == nullptr)
@@ -81,26 +80,20 @@ private:
         curr->hi->add_parent(curr, HI);
         if (curr->lo != nullptr)
             curr->lo->add_parent(curr, LO);
-        
-        curr->llen = curr->lo != nullptr ? curr->lo->llen + curr->lo->hlen: 0;
+
+        curr->llen = curr->lo != nullptr ? curr->lo->llen + curr->lo->hlen : 0;
         curr->hlen = curr->hi != nullptr ? curr->hi->llen + curr->hi->hlen : 0;
-        
-        curr->hlen = 0;
-        if(curr->hi != nullptr)
+
+        if (curr->hi != nullptr)
         {
             curr->hi->plen++;
-            curr->hlen =curr->hi->llen + curr->hi->hlen;
-            if(curr->hi != t1)
-                curr->hi->item->len = curr->hi->plen * (curr->hi->hlen + curr->hi->llen);
+            curr->hlen = curr->hi->llen + curr->hi->hlen;
         }
-        
-        curr->llen = 0;
-        if(curr->lo != nullptr)
+
+        if (curr->lo != nullptr)
         {
             curr->lo->plen++;
             curr->llen = curr->lo->llen + curr->lo->hlen;
-            if(curr->lo != t1)
-                curr->lo->item->len = curr->lo->plen * (curr->lo->hlen + curr->lo->llen);
         }
 
         // Rule 2 - merge
@@ -116,175 +109,89 @@ private:
                 match->plen += curr->plen;
                 match->extend_parents(curr->head, curr->tail, curr->parent_len);
                 curr = match;
-                                
+
                 merged.push_back(curr);
                 break;
             }
             p = p->down;
         }
-
         return curr;
     }
 
 public:
     Item *placeholder;
     Node *t1, *root;
-    vector<Node*> merged;
+    vector<Node *> merged;
 
-    DanceDD(deque<int> items)
+    DanceDD(deque<deque<int>> sets)
     {
         // placeholder item
         placeholder = new Item();
 
         // setting item headers
         Item *prev = placeholder;
-        for (auto val : items)
+        for (auto val : sets.front())
         {
             prev = new Item(val, prev);
         }
+        sets.pop_front();
 
         // terminal-1 node
         t1 = new Node();
         t1->hlen = 1;
-    }
 
-    void build(deque<deque<int>> sets)
-    {
         // building the zdd
         root = _build(placeholder->right, &sets);
         root->plen = 1;
-        root->item->len = root->plen * (root->hlen + root->llen);
-    }
 
-    void get_ancestors(vector<tuple<Node *, PATH, int>> *vec, Node *node)
-    {
-        if (node == nullptr || node == t1)
-            return;
-
-        Parent *i = node->head->right;
-        if (i == node->tail)
-            return;
-
-        while (i != node->tail)
+        // updating the lens
+        Item *i = placeholder->right;
+        while (i != placeholder)
         {
-            if (i->node != nullptr && i->node != t1)
-                vec->push_back(make_tuple(i->node, i->path, i->path == HI ? i->node->hlen : i->node->llen ));
-            i = i->right;
-        }
 
-        i = node->head->right;
-        while (i != node->tail)
-        {
-            if (i->node != nullptr && i->node != t1)
-                get_ancestors(vec, i->node);
+            Node *j = (Node *)i->down;
+            while (j != (Node *)i)
+            {
+                j->item->len += j->plen * j->hlen;
+                j = (Node *)j->down;
+            }
             i = i->right;
         }
     }
 
-    void cover_upper(vector<Node *> C)
+    void cover_ancestors(vector<Node *> *C, deque<tuple<Node *, PATH, int>> *ancestors)
     {
-        vector<tuple<Node *, PATH, int>> V;
-        for (auto i : C)
-            get_ancestors(&V, i);
-
-        vector<Node *> H;
-        for (auto [p, t, n] : V)
+        for (auto [p, t, n] : *ancestors)
         {
             int l = p->hlen;
-
-            // Update hlen(p) and llen(p) assuming all high edges of q ∈ C were removed
             if (t == HI)
-                p->hlen -= 1;
+                p->hlen -= n;
             else
-                p->llen -= 1;
-
-            Item *i = p->item;
-            int i_len = i->len - p->plen * (l - p->hlen);
-            
-            printf("(%d)i->len = %d - %d * (%d - %d) = %d\n", i->val, i->len, p->plen, l, p->hlen, i_len);
-            i->len = i_len;
+                p->llen -= n;
+            p->item->len = p->item->len - p->plen * (l - p->hlen);
 
             if (l > 0 && p->hlen == 0)
-                H.push_back(p);
-        }
-
-        for (auto p : H)
-        {
-            p->up->down = p->down;
-            p->down->up = p->up;
-
-            Parent *s = p->head->right;
-            while (s != p->tail)
-            {
-                if (p->lo != nullptr && p->hi != t1)
-                {
-                    p->lo->add_parent(s->node, s->path);
-                    if (s->path == LO)
-                        s->node->lo = p->lo;
-                    else
-                        s->node->hi = p->lo;
-                }
-                s=s->right;
-            }
-
-            if (p->hi != nullptr && p->hi != t1)
-                p->hi->remove_parent(p, HI);
-
-            if (p->lo != nullptr && p->hi != t1)
-                p->lo->remove_parent(p, LO);
-        }
-    }
-    
-    void get_descendants(deque<Node *> *descendants, Node *node)
-    {
-        if (node == nullptr || node == t1)
-            return;
-        
-        get_descendants(descendants, node->lo);
-        get_descendants(descendants, node->hi);
-
-        if (node->hi != nullptr && node->hi != t1)
-            descendants->push_front(node->hi);
-
-        if (node->lo != nullptr && node->lo != t1)
-            descendants->push_front(node->lo);
-        
-    }
-
-
-    void cover_lower(vector<Node *> C)
-    {
-        deque<Node *> V;
-        for (auto i : C)
-        {
-            V.push_front(i->hi);
-            get_descendants(&V, i->hi);
-        }
-
-        for (auto p : V)
-        {
-            int l = p->plen;
-
-            // Update plen(p) assuming all high edges of a € C were deleted.
-            p->plen -= 1;
-            
-            Item *i = p->item;
-            int i_len = i->len - (l - p->plen) * p->hlen;
-            printf("(%d) i->len = %d - (%d - %d) * %d = %d\n", i->val, i->len, l, p->plen, p->hlen, i_len);
-            i->len = i_len;
-            
-            if (p->plen == 0)
             {
                 p->up->down = p->down;
                 p->down->up = p->up;
 
-                if (p->hi != nullptr && p->hi != t1)
-                    p->hi->remove_parent(p, HI);
-
-                if (p->lo != nullptr && p->hi != t1)
-                    p->lo->remove_parent(p, LO);
+                auto a = p->head->right;
+                while (a != p->tail)
+                {
+                    if (p->lo != nullptr && p->lo != t1)
+                        p->lo->add_parent(a->node, a->path);
+                    if (a->path == HI)
+                        a->node->hi = p->lo;
+                    else
+                        a->node->lo = p->lo;
+                    a = a->right;
+                }
             }
         }
+    }
+
+    void cover_descendants(vector<Node *> *C, deque<Node *> *descendants)
+    {
     }
 
     void cover(Item *i)
@@ -292,103 +199,56 @@ public:
         i->left->right = i->right;
         i->right->left = i->left;
 
+        deque<tuple<Node *, PATH, int>> ancestors;
+        deque<Node *> descendants;
         vector<Node *> C;
         Node *p = (Node *)i->down;
         while (p != (Node *)i)
         {
+            // getting ancestors
+            p->get_ancestors(&ancestors);
+
+            // getting descendants
+            if (p->hi != nullptr && p->hi != t1)
+            {
+                descendants.push_back(p->hi);
+                p->hi->get_descendants(&descendants, t1);
+            }
+
+            // collecting nodes whose hi nodes should be hidden;
             C.push_back(p);
             p = (Node *)p->down;
         }
 
-        cover_upper(C);
-        cover_lower(C);
+        for (auto [n, p, t] : ancestors)
+        {
+            cout << n->item->val << " " << p << " " << t << endl;
+        }
 
+        cover_ancestors(&C, &ancestors);
+        cover_descendants(&C, &descendants);
+
+        // removing C nodes and pointing parents to lo nodes and addding parents to them
         for (auto p : C)
         {
-            Parent *a = p->head->right;
+            auto a = p->head->right;
             while (a != p->tail)
             {
-                if (p->lo != nullptr && p->hi != t1)
-                {
+                if (p->lo != nullptr && p->lo != t1)
                     p->lo->add_parent(a->node, a->path);
 
-                    if (a->path == LO)
-                        a->node->lo = p->lo;
-                    else
-                        a->node->hi = p->lo;
-                }
+                if (a->path == LO)
+                    a->node->lo = p->lo;
+                else
+                    a->node->hi = p->lo;
                 a = a->right;
             }
-
-            if (p->hi != nullptr && p->hi != t1)
-                p->hi->remove_parent(p, HI);
-
-            if (p->lo != nullptr && p->hi != t1)
-                p->lo->remove_parent(p, LO);
         }
-    }
-
-    void uncover_upper(vector<Node *> C)
-    {
-        // TODO
-    }
-
-    void uncover_lower(vector<Node *> C)
-    {
-        // TODO
-    }
-
-    void uncover(Item *i)
-    {
-        i->left->right = i;
-        i->right->left = i;
-
-        vector<Node *> C;
-        Node *p = (Node *)i->down;
-        while (p != (Node *)i)
-        {
-            C.push_back(p);
-            p = (Node *)p->down;
-        }
-
-        for (auto p : C)
-        {
-            p->hi->add_parent(p, HI);
-            p->lo->add_parent(p, LO);
-
-            Parent *a = p->head->left;
-            while (a != p->tail)
-            {
-                p->lo->remove_parent(a->node, a->path);
-                if (a->path == LO)
-                    a->node->lo = p;
-                else
-                    a->node->hi = p;
-            }
-        }
-
-        uncover_lower(C);
-        uncover_upper(C);
-    }
-    
-    void search(vector<vector<int>> R){}
-
-    int size()
-    {
-        int size = 0;
-        Item *p = placeholder->right;
-        while (p != placeholder)
-        {
-            size += p->len;
-            p = p->right;
-        }
-        return size;
     }
 
     void print()
     {
         Item *p = placeholder->right;
-        
         while (p != placeholder)
         {
             p->print();
@@ -397,13 +257,11 @@ public:
             {
                 n->print();
                 n = (Node *)n->down;
-                cout << endl;
             }
 
             p = p->right;
+            cout << endl;
         }
-        cout << "T1 " << t1 << endl;
-//        t1->print();
     }
 };
 

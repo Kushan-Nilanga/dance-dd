@@ -1,0 +1,297 @@
+
+    void get_ancestors(vector<tuple<Node *, PATH, int, int>> *vec, Node *node)
+    {
+        if (node == nullptr || node == t1)
+            return;
+
+        Parent *i = node->head->right;
+        if (i == node->tail)
+            return;
+
+        while (i != node->tail)
+        {
+            if (i->node != nullptr && i->node != t1)
+                vec->push_back(make_tuple(i->node, i->path, i->node->llen, i->node->hlen));
+            i = i->right;
+        }
+
+        i = node->head->right;
+        while (i != node->tail)
+        {
+            if (i->node != nullptr && i->node != t1)
+                get_ancestors(vec, i->node);
+            i = i->right;
+        }
+    }
+
+    void cover_upper(vector<Node *> C)
+    {
+        vector<tuple<Node *, PATH, int, int>> V;
+        for (auto i : C)
+            get_ancestors(&V, i);
+
+        vector<Node *> H;
+        for (auto [p, t, ll, hl] : V)
+        {
+            int l = p->hlen;
+
+            // Update hlen(p) and llen(p) assuming all high edges of q ∈ C were removed
+            if (t == HI)
+                p->hlen -= 1 * hl / hl;
+            else
+                p->llen -= 1 * ll / ll;
+
+            Item *i = p->item;
+            int i_len = i->len - p->plen * (l - p->hlen);
+
+            i->len = i_len;
+
+            if (l > 0 && p->hlen == 0)
+                H.push_back(p);
+        }
+
+        for (auto p : H)
+        {
+            p->up->down = p->down;
+            p->down->up = p->up;
+
+            Parent *s = p->head->right;
+            while (s != p->tail)
+            {
+                if (p->lo != nullptr && p->lo != t1)
+                    p->lo->add_parent(s->node, s->path);
+                if (s->path == LO)
+                    s->node->lo = p->lo;
+                else
+                    s->node->hi = p->lo;
+
+                s = s->right;
+            }
+
+            if (p->hi != nullptr && p->hi != t1)
+                p->hi->remove_parent(p, HI);
+
+            if (p->lo != nullptr && p->lo != t1)
+                p->lo->remove_parent(p, LO);
+        }
+    }
+
+    void get_descendants(deque<Node *> *descendants, Node *node)
+    {
+        if (node == nullptr || node == t1)
+            return;
+
+        get_descendants(descendants, node->lo);
+        get_descendants(descendants, node->hi);
+
+        if (node->hi != nullptr && node->hi != t1)
+            descendants->push_front(node->hi);
+
+        if (node->lo != nullptr && node->lo != t1)
+            descendants->push_front(node->lo);
+    }
+
+    void cover_lower(vector<Node *> C)
+    {
+        deque<Node *> V;
+        for (auto i : C)
+            get_descendants(&V, i);
+
+        for (auto p : V)
+        {
+            int l = p->plen;
+
+            // Update plen(p) assuming all high edges of a € C were deleted.
+            p->plen -= 1;
+
+            Item *i = p->item;
+            int i_len = i->len - (l - p->plen) * p->hlen;
+            i->len = i_len;
+
+            if (p->plen == 0)
+            {
+                p->up->down = p->down;
+                p->down->up = p->up;
+            }
+
+            if (p->hi != nullptr && p->hi != t1)
+                p->hi->remove_parent(p, HI);
+
+            if (p->lo != nullptr && p->lo != t1)
+                p->lo->remove_parent(p, LO);
+        }
+    }
+
+    void cover(Item *i)
+    {
+        i->left->right = i->right;
+        i->right->left = i->left;
+
+        vector<Node *> C;
+        Node *p = (Node *)i->down;
+        while (p != (Node *)i)
+        {
+            C.push_back(p);
+            p = (Node *)p->down;
+        }
+
+        cover_upper(C);
+        cover_lower(C);
+
+        for (auto p : C)
+        {
+            Parent *a = p->head->right;
+            while (a != p->tail)
+            {
+                if (p->lo != nullptr && p->lo != t1)
+                {
+                    p->lo->add_parent(a->node, a->path);
+
+                    if (a->path == LO)
+                        a->node->lo = p->lo;
+                    else
+                        a->node->hi = p->lo;
+                }
+                a = a->right;
+            }
+
+            if (p->hi != nullptr && p->hi != t1)
+                p->hi->remove_parent(p, HI);
+
+            if (p->lo != nullptr && p->lo != t1)
+                p->lo->remove_parent(p, LO);
+        }
+    }
+
+    void uncover_upper(vector<Node *> C)
+    {
+        vector<tuple<Node *, PATH, int, int>> V;
+        for (auto i : C)
+            get_ancestors(&V, i);
+
+        // Creating Vector H
+        vector<Node *> H;
+        for (auto [p, t, ll, hl] : V)
+        {
+            int l = p->hlen;
+            int k = p->hlen;
+
+            if (t == HI)
+                k -= 1 * hl / hl;
+
+            if (l > 0 && k == 0)
+                H.push_back(p);
+        }
+
+        for (auto p : H)
+        {
+            p->up->down = p;
+            p->down->up = p;
+
+            Parent *i = p->head->right;
+            while (i != p->tail)
+            {
+                if (p->lo != nullptr && p->lo != t1)
+                    p->lo->remove_parent(i->node, i->path);
+                if (i->path == LO)
+                    i->node->lo = p;
+                else
+                    i->node->hi = p;
+                i = i->right;
+            }
+
+            if (p->hi != nullptr && p->hi != t1)
+                p->hi->add_parent(p, HI);
+
+            if (p->lo != nullptr && p->lo != t1)
+                p->lo->add_parent(p, LO);
+        }
+
+        for (auto [p, t, ll, hl] : V)
+        {
+            int l = p->hlen;
+
+            // Update hlen(p) and llen(p) assuming all high edges of q ∈ C were recovered
+            if (t == HI)
+                p->hlen += 1 * hl / hl;
+            else
+                p->llen += 1 * ll / ll;
+
+            Item *i = p->item;
+
+            i->len = i->len + p->plen * (p->hlen - l);
+        }
+    }
+
+    void uncover_lower(vector<Node *> C)
+    {
+        deque<Node *> V;
+        for (auto i : C)
+        {
+            if (i->hi != nullptr && i->hi != t1)
+                V.push_front(i->hi);
+            get_descendants(&V, i->hi);
+        }
+
+        vector<Node *> H;
+        for (auto p : V)
+        {
+            int l = p->plen;
+            p->plen += 1;
+            Item *i = p->item;
+            i->len = i->len + (p->plen - l) * p->hlen;
+
+            if (l == 0 && p->plen > 0)
+                H.push_back(p);
+        }
+
+        for (auto p : H)
+        {
+            p->down->up = p;
+            p->up->down = p;
+
+            if (p->hi != nullptr && p->hi != t1)
+                p->hi->add_parent(p, HI);
+
+            if (p->lo != nullptr && p->lo != t1)
+                p->lo->add_parent(p, LO);
+        }
+    }
+
+    void uncover(Item *i)
+    {
+        i->left->right = i;
+        i->right->left = i;
+
+        vector<Node *> C;
+        Node *p = (Node *)i->down;
+        while (p != (Node *)i)
+        {
+            C.push_back(p);
+            p = (Node *)p->down;
+        }
+
+        for (auto p : C)
+        {
+            if (p->hi != nullptr && p->hi != t1)
+                p->hi->add_parent(p, HI);
+
+            if (p->lo != nullptr && p->lo != t1)
+                p->lo->add_parent(p, LO);
+
+            Parent *a = p->head->right;
+            while (a != p->tail)
+            {
+                if (p->lo != nullptr && p->lo != t1)
+                    p->lo->remove_parent(a->node, a->path);
+                if (a->path == LO)
+                    a->node->lo = p;
+                else
+                    a->node->hi = p;
+                a = a->right;
+            }
+        }
+
+        uncover_lower(C);
+        uncover_upper(C);
+    }

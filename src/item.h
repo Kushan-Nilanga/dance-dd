@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include "cell.h"
+#include "node.h"
 
 
 using namespace std;
@@ -36,7 +37,7 @@ public:
     
     void print()
     {
-        cout << "Item "<< val << " [" << this << "] len: "<< len <<endl;
+        cout << "Item "<< val << " len: "<< len <<endl;
     }
 
     Item *left, *right;
