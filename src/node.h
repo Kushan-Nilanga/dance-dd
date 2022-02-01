@@ -55,12 +55,12 @@ public:
         }
     }
 
-    void get_ancestors(deque<tuple<Node *, PATH, int>> *destination)
+    void get_ancestors(deque<tuple<Node *, PATH>> *destination)
     {
         Parent *p = head->right;
         while (p != tail)
         {
-            destination->push_back(make_tuple(p->node, p->path, p->path == HI ? p->node->hlen : p->node->llen));
+            destination->push_back(make_tuple(p->node, p->path));
             p->node->get_ancestors(destination);
             p = p->right;
         }
@@ -68,6 +68,14 @@ public:
 
     void add_parent(Node *node, PATH path)
     {
+        Parent *a = head->right;
+        while (a != tail && a != nullptr)
+        {
+            if (a->node == node && a->path == path)
+                return;
+            a = a->right;
+        }
+
         Parent *p = new Parent(node, path);
         p->left = tail->left;
         p->right = tail;
@@ -87,6 +95,8 @@ public:
 
     void remove_parent(Node *node, PATH path)
     {
+        if (this == nullptr)
+            return;
         Parent *a = head->right;
         while (a != tail)
         {
@@ -98,6 +108,76 @@ public:
                 return;
             }
             a = a->right;
+        }
+    }
+
+    void ancestor_options(vector<deque<Node *>> *ops, deque<Node *> op, Parent *p)
+    {
+        if (p->path == HI)
+            op.push_front(p->node);
+
+        auto a = p->node->head->right;
+        if (a == p->node->tail)
+        {
+            ops->push_back(op);
+            return;
+        }
+
+        while (a != p->node->tail)
+        {
+            ancestor_options(ops, op, a);
+            a = a->right;
+        }
+    }
+
+    void descendent_options(vector<deque<Node *>> *ops, deque<Node *> op, Node *node, Node *t1)
+    {
+        if (node == nullptr)
+            return;
+
+        if (node == t1)
+        {
+            ops->push_back(op);
+            return;
+        }
+
+        descendent_options(ops, op, node->lo, t1);
+        op.push_back(node);
+        descendent_options(ops, op, node->hi, t1);
+    }
+
+    void options(vector<deque<Node *>> *options, Node *t1)
+    {
+        auto ans_op = new vector<deque<Node *>>;
+        auto des_op = new vector<deque<Node *>>;
+        deque<Node *> def;
+
+        auto a = this->head->right;
+        while (a != this->tail)
+        {
+            ancestor_options(ans_op, def, a);
+            a = a->right;
+        }
+        def.push_back(this);
+        descendent_options(des_op, def, this->hi, t1);
+
+        if (this->head->right == this->tail)
+        {
+            for (auto de : *des_op)
+                options->push_back(de);
+            return;
+        }
+
+        // combine ancestoral options with descendent options
+        for (auto an : *ans_op)
+        {
+            for (auto de : *des_op)
+            {
+                deque<Node *> v;
+                v.insert(v.begin(), an.begin(), an.end());
+                v.insert(v.end(), de.begin(), de.end());
+                options->push_back(v);
+            }
         }
     }
 
@@ -115,8 +195,8 @@ public:
                                                              : to_string(lo->item->val);
 
         cout << "[\033[32mhlen: " << hlen << ", \033[31mllen: " << llen << ", \033[33mplen: " << plen;
-        cout << "\033[0m][\033[30m\033[42mHI " << h;
-        cout << ",\033[41m LO " << l << "\033[0m]";
+        cout << "\033[0m][\033[42m HI " << h;
+        cout << " \033[41m LO " << l << " \033[0m]";
 
         cout << "[";
 
