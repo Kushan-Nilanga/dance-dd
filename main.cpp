@@ -27,15 +27,30 @@ deque<int> text_to_array(string text)
     return set;
 };
 
-vector<string> data_file{"/data/cycle/exact_cover/simple.ec"};
-string location = "/Users/donkushanathalage/Desktop/d3x-c++/d3x";
+void print_sols(vector<vector<deque<Node *>>> *sols)
+{
+    for (auto sol : *sols)
+    {
+        cout << "| ";
+        for (auto j : sol)
+        {
+            for (auto k : j)
+            {
+                cout << k->item->val << " ";
+            }
+            cout << "| ";
+        }
+        cout << endl;
+    }
+}
 
-void test(DanceDD *dd, deque<deque<int>> sets);
+vector<string> data_file{"/data/cycle/exact_cover/Ion.ec"};
+string location = "/Users/donkushanathalage/Desktop/d3x-c++/d3x";
 
 // Main function
 int main()
 {
-    ifstream file(location + "/data/cycle/exact_cover/simple.ec");
+    ifstream file(location + "/example.ec");
     string text;
 
     // all sets in the
@@ -52,8 +67,11 @@ int main()
     cout << "----------- DIAGRAM ------------\n";
     dd->print();
 
-    vector<std::deque<Node *>> R;
-    cout << "----------- SEARCH ------------\n";
-    dd->search(R);
+    vector<deque<Node *>> R;
+    auto *sols = new vector<vector<deque<Node *>>>;
+    dd->search(R, sols);
+
+    cout << "----------- SOLUTIONS ------------\n";
+    print_sols(sols);   
     return 0;
 }

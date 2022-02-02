@@ -84,15 +84,6 @@ public:
         parent_len++;
     }
 
-    void extend_parents(Parent *o_head, Parent *o_tail, int len)
-    {
-        o_head->right->left = tail->left;
-        o_tail->left->right = tail;
-        tail->left->right = o_head->right;
-        tail->left = o_tail->left;
-        parent_len += len;
-    }
-
     void remove_parent(Node *node, PATH path)
     {
         if (this == nullptr)
@@ -130,7 +121,7 @@ public:
         }
     }
 
-    void descendent_options(vector<deque<Node *>> *ops, deque<Node *> op, Node *node, Node *t1)
+    void descendant_options(vector<deque<Node *>> *ops, deque<Node *> op, Node *node, Node *t1)
     {
         if (node == nullptr)
             return;
@@ -141,9 +132,9 @@ public:
             return;
         }
 
-        descendent_options(ops, op, node->lo, t1);
+        descendant_options(ops, op, node->lo, t1);
         op.push_back(node);
-        descendent_options(ops, op, node->hi, t1);
+        descendant_options(ops, op, node->hi, t1);
     }
 
     void options(vector<deque<Node *>> *options, Node *t1)
@@ -159,7 +150,7 @@ public:
             a = a->right;
         }
         def.push_back(this);
-        descendent_options(des_op, def, this->hi, t1);
+        descendant_options(des_op, def, this->hi, t1);
 
         if (this->head->right == this->tail)
         {
@@ -169,15 +160,22 @@ public:
         }
 
         // combine ancestoral options with descendent options
+        bool allow_empty_ancestor = true;
         for (auto an : *ans_op)
         {
-            for (auto de : *des_op)
+            if (an.size() > 0 || allow_empty_ancestor == true)
             {
-                deque<Node *> v;
-                v.insert(v.begin(), an.begin(), an.end());
-                v.insert(v.end(), de.begin(), de.end());
-                options->push_back(v);
+                for (auto de : *des_op)
+                {
+                    deque<Node *> v;
+                    v.insert(v.begin(), an.begin(), an.end());
+                    v.insert(v.end(), de.begin(), de.end());
+                    options->push_back(v);
+                }
             }
+
+            if (an.size() == 0)
+                allow_empty_ancestor = false;
         }
     }
 

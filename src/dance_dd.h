@@ -17,6 +17,8 @@
 #include "item.h"
 #include "cell.h"
 
+#define LOG
+
 using namespace std;
 
 // ZDD datastructure incorporating dancing links
@@ -108,7 +110,10 @@ private:
                 curr->down->up = curr->up;
                 auto match = (Node *)p;
                 match->plen += curr->plen;
-                match->extend_parents(curr->head, curr->tail, curr->parent_len);
+
+                for (auto a = curr->head->right; a != curr->tail; a = a->right)
+                    match->add_parent(a->node, a->path);
+
                 curr = match;
 
                 merged.push_back(curr);
@@ -167,6 +172,9 @@ public:
         deque<Node *> *>
     cover(Item *i)
     {
+#ifdef LOG
+        cout << "covering " << i->val << endl;
+#endif
 
         i->left->right = i->right;
         i->right->left = i->left;
@@ -286,6 +294,10 @@ public:
         vector<Node *> *C,
         deque<Node *> *descendants)
     {
+#ifdef LOG
+        cout << "uncovering " << i->val << endl;
+#endif
+
         i->left->right = i;
         i->right->left = i;
 
@@ -363,32 +375,42 @@ public:
         }
     }
 
-    void search(vector<deque<Node *>> R)
+    void print_options(vector<deque<Node *>> R)
+    {
+        cout << " | ";
+        for (auto j : R)
+        {
+            for (auto k : j)
+            {
+                cout << k->item->val << " ";
+            }
+            cout << "| ";
+        }
+        cout << endl;
+    }
+
+    void print_option(deque<Node *> R)
+    {
+        cout << " | ";
+        for (auto k : R)
+        {
+            cout << k->item->val << " ";
+        }
+        cout << "| ";
+        cout << endl;
+    }
+
+    void search(vector<deque<Node *>> R, vector<vector<deque<Node *>>> *sols)
     {
         if (placeholder->right == placeholder)
         {
-            cout << "| ";
-            for (auto j : R)
-            {
-                for (auto k : j)
-                {
-                    cout << k->item->val << " ";
-                }
-                cout << "| ";
-            }
-            cout << endl;
+            cout << "SOLUTION FOUND ";
+            print_options(R);
+            sols->push_back(R);
             return;
         }
 
-        // MRV is used here by Nishino et. al
-        Item *i_ = placeholder->right;
         Item *i = placeholder->right;
-        while (i_ != placeholder)
-        {
-            if (i->len > i_->len)
-                i = i_;
-            i_ = i_->right;
-        }
 
         cover(i);
 
@@ -397,27 +419,43 @@ public:
         {
             auto ops = new vector<deque<Node *>>;
             p->options(ops, t1);
+#ifdef LOG
+            cout << "options with (" << p->item->val << ") ";
+            print_options(*ops);
+#endif
+
             for (auto x : *ops)
             {
-                vector<tuple<Item *,
-                             deque<tuple<Node *, PATH>> *,
-                             vector<Node *> *,
-                             vector<Node *> *,
-                             deque<Node *> *>>
+                deque<tuple<Item *,
+                            deque<tuple<Node *, PATH>> *,
+                            vector<Node *> *,
+                            vector<Node *> *,
+                            deque<Node *> *>>
                     X;
+
+#ifdef LOG
+                cout << "pushed to solution";
+                print_option(x);
+#endif
                 R.push_back(x);
+
                 for (auto p_ : x)
                 {
                     auto [ans, h, c, des] = cover(p_->item);
-                    X.push_back(make_tuple(p->item, ans, h, c, des));
+                    X.push_front(make_tuple(p_->item, ans, h, c, des));
                 }
 
-                search(R);
+                search(R, sols);
 
                 for (auto [i, ans, h, c, des] : X)
                     uncover(i, ans, h, c, des);
 
                 R.pop_back();
+
+#ifdef LOG
+                cout << "removed from solution";
+                print_option(x);
+#endif
             }
             p = (Node *)p->down;
         }
