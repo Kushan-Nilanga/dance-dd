@@ -411,8 +411,19 @@ public:
         }
 
         Item *i = placeholder->right;
+        // Item *_i = placeholder->right;
 
-        cover(i);
+        // if (i == placeholder)
+        //     return;
+
+        // while (_i != placeholder)
+        // {
+        //     if (i->len > _i->len)
+        //         i = _i;
+        //     _i = _i->right;
+        // }
+
+        auto [ans1, h1, c1, des1] = cover(i);
 
         auto p = (Node *)i->down;
         while (p != (Node *)i)
